@@ -1,0 +1,191 @@
+Parameters:
+  Project:
+    Default: "apprunner-rss"
+    Type: String
+  ArtifactStoreBucket:
+    Default: "sumikawa-buildzip"
+    Type: String
+  BranchName:
+    Default: "main"
+    Type: String
+
+Resources:
+  PipelineRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: codepipeline.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: CodePipelineAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Sid: S3
+                Effect: Allow
+                Action: s3:*
+                Resource:
+                  - !Sub arn:aws:s3:::${ArtifactStoreBucket}
+                  - !Sub arn:aws:s3:::${ArtifactStoreBucket}/*
+              - Sid: CodeBuild
+                Effect: Allow
+                Action: codebuild:*
+                Resource:
+                  - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${Project}
+              - Sid: Github
+                Effect: Allow
+                Action: codestar-connections:*
+                Resource:
+                  - '*'
+  CodeBuildServiceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: /
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+            Action:
+                - sts:AssumeRole
+      Policies:
+        - PolicyName: !Sub CodeBuildPolicy-${Project}
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Project}
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/${Project}:*
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+              - Effect: Allow
+                Resource:
+                  - !Sub arn:aws:s3:::codepipeline-${AWS::Region}-*
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+              - Effect: Allow
+                Resource:
+                  - !Sub arn:aws:s3:::${ArtifactStoreBucket}/*
+                Action:
+                  - s3:GetObject
+                  - s3:GetObjectVersion
+                  - s3:PutObject
+              - Effect: Allow
+                Resource:
+                  - '*'
+                Action: ecr:*
+  CodeBuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub ${Project}
+      ServiceRole: !GetAtt CodeBuildServiceRole.Arn
+      Artifacts:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/amazonlinux2-x86_64-standard:3.0
+        PrivilegedMode: 'true'
+        EnvironmentVariables:
+          - Name: AWS_DEFAULT_REGION
+            Value: !Ref AWS::Region
+          - Name: ECR_REPOSITORY_NAME
+            Value: !Sub ${Project}
+      Source:
+        Type: CODEPIPELINE
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub ${Project}
+      ImageScanningConfiguration:
+        ScanOnPush: true
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    Properties:
+      Name: !Sub ${Project}
+      RoleArn: !GetAtt PipelineRole.Arn
+      ArtifactStore:
+        Type: "S3"
+        Location: !Sub ${ArtifactStoreBucket}
+      Stages:
+        - Name: Source
+          Actions:
+            - Name: download-source-from-github
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: CodeStarSourceConnection
+              Configuration:
+                ConnectionArn: !Sub arn:aws:codestar-connections:ap-northeast-1:${AWS::AccountId}:connection/d9cfef80-2c7b-48c7-8cc9-3ffc3be1e82a
+                FullRepositoryId: !Sub sumikawa/${Project}
+                BranchName: !Sub ${BranchName}
+              OutputArtifacts:
+                - Name: SourceOutput
+        - Name: Build
+          Actions:
+            - InputArtifacts:
+                - Name: SourceOutput
+              Name: Build
+              ActionTypeId:
+                Category: Test
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              OutputArtifacts:
+                - Name: TestOutput
+              Configuration:
+                ProjectName: !Ref CodeBuildProject
+  InstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: tasks.apprunner.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Policies:
+        -
+          PolicyName: "SSM"
+          PolicyDocument:
+            Version : "2012-10-17"
+            Statement:
+              - Sid: SSMandKMS
+                Effect: Allow
+                Action:
+                  - ssm:GetParameter
+                  - kms:Decrypt
+                Resource:
+                  - '*'
+  AppRunner:
+    Type: AWS::AppRunner::Service
+    Properties:
+      ServiceName: !Sub ${Project}
+      SourceConfiguration:
+        AuthenticationConfiguration:
+          AccessRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/service-role/AppRunnerECRAccessRole
+        AutoDeploymentsEnabled: true
+        ImageRepository:
+          ImageIdentifier: !Sub ${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${Project}:latest
+          ImageRepositoryType: ECR
+          ImageConfiguration:
+            Port: 4567
+            RuntimeEnvironmentVariables:
+              - Name: RACK_ENV
+                Value: production
+      InstanceConfiguration:
+        Cpu: 1 vCPU
+        Memory: 3 GB
+        InstanceRoleArn: !GetAtt InstanceRole.Arn

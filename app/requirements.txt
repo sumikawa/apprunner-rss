@@ -1,0 +1,4 @@
+requests
+dropbox
+boto3
+feedgenerator
