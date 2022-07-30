@@ -20,7 +20,7 @@ def getlist():
 
     feed = feedgenerator.Rss201rev2Feed(
         title = u'Videos',
-        link = u'https://7pqp7k8u6k.execute-api.ap-northeast-1.amazonaws.com/Prod/rss/',
+        link = u'https://5z9myiikpv.ap-northeast-1.awsapprunner.com/rss',
         description = u'test',
         pubdate = datetime.datetime.utcnow())
 
