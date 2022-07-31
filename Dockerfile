@@ -4,6 +4,8 @@ WORKDIR /app
 
 COPY ./app /app
 
-RUN pip install Flask requests dropbox boto3 feedgenerator
+RUN python -m pip install --upgrade pip
+RUN pip install Flask
+RUN pip install -r requirements.txt -t .
 
 CMD ["python", "index.py"]
