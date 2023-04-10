@@ -36,7 +36,7 @@ def getlist():
         contentname = re.sub(r"\.(mp4|m4v|mp3|m4a)$", '', entry.name)
         # url = dbx.files_get_temporary_link(entry.path_lower).link
         # cfurl = url.replace('content.dropboxapi.com', 'd3fynstehsnhva.cloudfront.net')
-        cfurl = 'https://d3fynstehsnhva.cloudfront.net' + entry.path_lower
+        cfurl = 'https://d32ng5ov0cp0y5.cloudfront.net' + entry.path_lower
         link = cfurl.replace('&','%26')
         # print(link)
 
