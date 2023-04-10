@@ -34,10 +34,9 @@ def getlist():
         if not(re.match(pattern, entry.name)):
             continue
         contentname = re.sub(r"\.(mp4|m4v|mp3|m4a)$", '', entry.name)
-        # url = dbx.files_get_temporary_link(entry.path_lower).link
-        # cfurl = url.replace('content.dropboxapi.com', 'd3fynstehsnhva.cloudfront.net')
-        cfurl = 'https://d32ng5ov0cp0y5.cloudfront.net' + entry.path_lower
-        link = cfurl.replace('&','%26')
+        link = dbx.files_get_temporary_link(entry.path_lower).link
+        # cfurl = 'https://d32ng5ov0cp0y5.cloudfront.net' + entry.path_lower
+        # link = cfurl.replace('&','%26')
         # print(link)
 
         (mtype, mencoding) = mimetypes.guess_type(entry.name)
