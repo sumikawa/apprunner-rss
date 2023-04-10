@@ -36,21 +36,20 @@ def getlist():
         contentname = re.sub(r"\.(mp4|m4v|mp3|m4a)$", '', entry.name)
         # url = dbx.files_get_temporary_link(entry.path_lower).link
         # cfurl = url.replace('content.dropboxapi.com', 'd3fynstehsnhva.cloudfront.net')
-        cfurl2 = 'https://d3fynstehsnhva.cloudfront.net' + entry.path_lower
-        # print(cfurl2)
+        cfurl = 'https://d3fynstehsnhva.cloudfront.net' + entry.path_lower
+        link = cfurl.replace('&','%26')
+        # print(link)
 
         (mtype, mencoding) = mimetypes.guess_type(entry.name)
 
-        enclosure = feedgenerator.Enclosure(cfurl2, str(entry.size), mtype)
-        # enclosure = feedgenerator.Enclosure(cfurl, str(entry.size), mtype)
-        # enclosure = feedgenerator.Enclosure("http://emacs.don.to/" + entry.name, str(entry.size), mtype)
+        enclosure = feedgenerator.Enclosure(link, str(entry.size), mtype)
 
         md5 = hashlib.md5(entry.path_lower.encode('utf-8')).hexdigest()
         # print(contentname)
         # print(vars(enclosure))
         feed.add_item(
             title = contentname,
-            link = cfurl2,
+            link = link,
             description = entry.name,
             author_name = u'nobody@example.com',
             unique_id = md5,
