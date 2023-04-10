@@ -17,7 +17,7 @@ def getlist():
 
     feed = feedgenerator.Rss201rev2Feed(
         title = u'Videos',
-        link = u'https://5z9myiikpv.ap-northeast-1.awsapprunner.com/rss',
+        link = u'https://xycny9aw7y.ap-northeast-1.awsapprunner.com/rss',
         description = u'test',
         pubdate = datetime.datetime.utcnow())
 
