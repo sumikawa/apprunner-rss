@@ -2,7 +2,7 @@ PROJECT=apprunner-rss
 REGION=ap-northeast-1
 ACCOUNT=853641575541
 
-URL=https://pqwm9pmm6x.ap-northeast-1.awsapprunner.com
+URL=https://xycny9aw7y.ap-northeast-1.awsapprunner.com/rss
 
 login::
 	aws ecr get-login-password --region ${REGION} | docker login --username AWS --password-stdin https://${ACCOUNT}.dkr.ecr.${REGION}.amazonaws.com
@@ -34,3 +34,6 @@ updatestack:
 
 validate:
 	aws --region ${REGION} cloudformation validate-template --template-body "$$(cat pipeline.yml)"
+
+test:
+	curl ${URL} | xmllint --format - 
